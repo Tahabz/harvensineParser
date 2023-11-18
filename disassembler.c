@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdlib.h>
 
 #define MOV 0x88
 #define MOV_MASK 0xFC
@@ -66,28 +65,16 @@ int main(int argc, char **argv)
         if ((buffer[0] & WMASK) == 0)
         {
             if ((buffer[0] & DMASK) == DMOD)
-            {
-                fprintf(output, "%s, ", table[reg][0]);
-                fprintf(output, "%s\n", table[reg2][0]);
-            }
+                fprintf(output, "%s, %s\n", table[reg][0], table[reg2][0]);
             else
-            {
-                fprintf(output, "%s, ", table[reg2][0]);
-                fprintf(output, "%s\n", table[reg][0]);
-            }
+                fprintf(output, "%s, %s\n", table[reg2][0], table[reg][0]);
         }
         else
         {
             if ((buffer[0] & DMASK) == DMOD)
-            {
-                fprintf(output, "%s, ", table[reg][1]);
-                fprintf(output, "%s\n", table[reg2][1]);
-            }
+                fprintf(output, "%s, %s\n", table[reg][1], table[reg2][1]);
             else
-            {
-                fprintf(output, "%s, ", table[reg2][1]);
-                fprintf(output, "%s\n", table[reg][1]);
-            }
+                fprintf(output, "%s, %s\n", table[reg2][1], table[reg][1]);
         }
     }
 
