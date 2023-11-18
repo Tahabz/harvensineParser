@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdbool.h>
 
 #define MOV 0x88
 #define MOV_MASK 0xFC
@@ -61,21 +62,13 @@ int main(int argc, char **argv)
 
         unsigned char reg = (buffer[1] & RMASK) >> 3;
         unsigned char reg2 = buffer[1] & REMASK;
+        bool i = buffer[0] & WMASK;
+
         fprintf(output, "MOV ");
-        if ((buffer[0] & WMASK) == 0)
-        {
-            if ((buffer[0] & DMASK) == DMOD)
-                fprintf(output, "%s, %s\n", table[reg][0], table[reg2][0]);
-            else
-                fprintf(output, "%s, %s\n", table[reg2][0], table[reg][0]);
-        }
+        if ((buffer[0] & DMASK) == DMOD)
+            fprintf(output, "%s, %s\n", table[reg][i], table[reg2][i]);
         else
-        {
-            if ((buffer[0] & DMASK) == DMOD)
-                fprintf(output, "%s, %s\n", table[reg][1], table[reg2][1]);
-            else
-                fprintf(output, "%s, %s\n", table[reg2][1], table[reg][1]);
-        }
+            fprintf(output, "%s, %s\n", table[reg2][i], table[reg][i]);
     }
 
     fclose(source);
