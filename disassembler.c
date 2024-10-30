@@ -62,11 +62,19 @@ int main(int argc, char **argv)
 
         unsigned char reg = (buffer[1] & RMASK) >> 3;
         unsigned char reg2 = buffer[1] & REMASK;
-        unsigned char dpos = (buffer[0] & DMASK) == DMOD ? reg : reg2;
+        unsigned char dpos, spos;
+        if ((buffer[0] & DMASK) == DMOD) {
+            dpos = reg;
+            spos = reg2;
+        } else {
+            dpos = reg2;
+            spos = reg;
+        }
+
         bool i = buffer[0] & WMASK;
 
         fprintf(output, "MOV ");
-        fprintf(output, "%s, %s\n", table[dpos][i], table[dpos][i]);
+        fprintf(output, "%s, %s\n", table[dpos][i], table[spos][i]);
     }
 
     fclose(source);
