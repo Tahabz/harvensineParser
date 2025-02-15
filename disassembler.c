@@ -118,7 +118,7 @@ int main(int argc, char **argv)
             d[0] = buffer[1];
             if (imByte1->w) {
                 read(fd, d + 1, 1);
-                printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *((unsigned short *)(unsigned char []){ buffer[1], d[1] }));
+                printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *(unsigned short *)d);
             } else {
                 printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], d[0]);
             }
