@@ -72,17 +72,60 @@ int main(int argc, char **argv)
     fprintf(output, "BITS 16\n\n");
     while (read(fd, &buffer, 2) > 0)
     {
-        if (buffer[0] >> 4 == 0b00001011) {
+        if (buffer[0] >> 1 == 0b01100011) {
+            Byte1 *byte1 = (Byte1 *)&buffer[0];
+            Byte2 *byte2 = (Byte2 *)&buffer[1];
+            if (byte2->mod == 0b00) {
+                if (byte2->rm == 0b00000110) {
+                    unsigned short dh;
+                    read(fd, &dh, 2);
+                    if (byte1->w) {
+                    unsigned short hdata;
+                    read(fd, &hdata, 2);
+                    printf("MOV [%d], %d\n", dh, hdata);
+                    } else {
+                        unsigned char ldata;
+                        read(fd, &ldata, 1);
+                        printf("MOV [%d], %d\n", dh, ldata);
+                    }
+                }
+                else if (byte1->w) {
+                    unsigned short hdata;
+                    read(fd, &hdata, 2);
+                    printf("MOV [%s], %d\n", MMOD_table[byte2->rm], hdata);
+                } else {
+                    unsigned char ldata;
+                    read(fd, &ldata, 1);
+                    printf("MOV [%s], %d\n", MMOD_table[byte2->rm], ldata);
+                }
+            } else if (byte2->mod == 0b01) {
+                unsigned char dl;
+                read(fd, &dl, 1);
+                if (byte1->w) {
+                    unsigned short hdata;
+                    read(fd, &hdata, 2);
+                    printf("MOV [%s + %d], %d\n", MMOD_table[byte2->rm], dl, hdata);
+                } else {
+                    unsigned char ldata;
+                    read(fd, &ldata, 1);
+                    printf("MOV [%s + %d], %d\n", MMOD_table[byte2->rm], dl, ldata);
+                }
+            }
+        }
+        else if (buffer[0] >> 4 == 0b00001011) {
             ImByte1 *imByte1 = (ImByte1 *)&buffer[0];
             unsigned char d[2];
             d[0] = buffer[1];
             if (imByte1->w) {
                 read(fd, d + 1, 1);
-                printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *((unsigned short *)d));
+                printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *((unsigned short *)(unsigned char []){ buffer[1], d[1] }));
             } else {
                 printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], d[0]);
             }
         } else {
+
+
+
 
             Byte1 *byte1 = (Byte1 *)&buffer[0];
             Byte2 *byte2 = (Byte2 *)&buffer[1];
