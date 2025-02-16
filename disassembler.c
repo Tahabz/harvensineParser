@@ -5,6 +5,19 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+unsigned short mem[8] = {0};
+
+// enum REGS {
+//   a,
+//   b,
+//   c,
+//   d,
+//   sp,
+//   bp,
+//   si,
+//   di
+// };
+
 typedef struct {
     unsigned char w : 1;
     unsigned char d : 1;
@@ -122,9 +135,9 @@ int main(int argc, char **argv)
                     unsigned short dh;
                     read(fd, &dh, 2);
                     if (byte1->w) {
-                    unsigned short hdata;
-                    read(fd, &hdata, 2);
-                    printf("[%d], %d\n", dh, hdata);
+                        unsigned short hdata;
+                        read(fd, &hdata, 2);
+                        printf("[%d], %d\n", dh, hdata);
                     } else {
                         unsigned char ldata;
                         read(fd, &ldata, 1);
@@ -176,21 +189,71 @@ int main(int argc, char **argv)
                 }
             }
         }
+        //[]
         else if (imReg) {
             ImByte1 *imByte1 = (ImByte1 *)&buffer[0];
             unsigned char d[2];
             d[0] = buffer[1];
             if (imByte1->w) {
                 read(fd, d + 1, 1);
-                printf("%s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *(unsigned short *)d);
-            } else {
-                printf("%s, %d\n", RMOD_table[imByte1->reg][imByte1->w], d[0]);
+                printf("%s, %d; %d -> %d\n",
+                    RMOD_table[imByte1->reg][imByte1->w],
+                    *(unsigned short *)d,
+                    mem[imByte1->reg],
+                    *(unsigned short *)d
+                );
+                mem[imByte1->reg] = *(unsigned short *)d;
+            }
+            else {
+                unsigned char *reg;
+                if (imByte1->reg < 0b100 && !imByte1->w) {
+                    reg = (unsigned char *)&mem[imByte1->reg];
+                    printf("%s, %d; %d -> %d\n",
+                        RMOD_table[imByte1->reg][imByte1->w],
+                        d[0],
+                        *(reg + 1),
+                        d[0]
+                    );
+                    *(reg + 1) = d[0];
+                } else {
+                    reg = (unsigned char *)&mem[imByte1->reg - 4];
+                    printf("%s, %d; %d -> %d\n",
+                        RMOD_table[imByte1->reg][imByte1->w],
+                        d[0],
+                        *(reg),
+                        d[0]
+                    );
+                    *reg = d[0];
+                }
             }
         } else {
         
             // register to register
             if (byte2->mod == 0b11) {
-                printf("%s, %s\n", RMOD_table[byte2->rm][byte1->w], RMOD_table[byte2->reg][byte1->w]);
+                printf("%s, %s; ", RMOD_table[byte2->rm][byte1->w], RMOD_table[byte2->reg][byte1->w]);
+                if (byte1->w) {
+                    printf("%d -> %d\n", mem[byte2->rm], mem[byte2->reg]);
+                    mem[byte2->rm] = mem[byte2->reg];
+                }
+                else {
+                    unsigned char *dd;
+                    unsigned char *sd;
+                    if (byte2->rm > 0b100) {
+                        dd = ((unsigned char *)&mem[byte2->rm - 4]);
+                    }
+                    else {
+                        dd = ((unsigned char *)&mem[byte2->rm] + 1);
+                    }
+                    if (byte2->reg > 0b100) {
+                        sd = ((unsigned char *)&mem[byte2->reg - 4]);
+                    }
+                    else {
+                        sd = ((unsigned char *)&mem[byte2->reg] + 1);
+                    }
+                    printf("%d -> ", *dd);
+                    *dd = *sd;
+                    printf("%d\n", *dd);
+                }
             // no displacement
             } else if (byte2->mod == 0b00) {
                 unsigned char dh[2];
@@ -233,6 +296,24 @@ int main(int argc, char **argv)
         }
 
     }
+
+    printf("----------RESULT-----------\n");
+    printf("AX=%d\n", mem[0]);
+    // printf("AH=%d\n", mem[0] & 0xFF);
+    // printf("AL=%d\n", (mem[0] >> 8) & 0xFF);
+    printf("CX=%d\n", mem[1]);
+    // printf("CH=%d\n", mem[1] & 0xFF);
+    // printf("CL=%d\n", (mem[1] >> 8) & 0xFF);
+    printf("DX=%d\n", mem[2]);
+    // printf("DH=%d\n", mem[2] & 0xFF);
+    // printf("DL=%d\n", (mem[2] >> 8) & 0xFF);
+    printf("BX=%d\n", mem[3]);
+    // printf("BH=%d\n", *((unsigned char *)&mem[3]));
+    // printf("BL=%d\n", *((unsigned char *)&mem[3] + 1));
+    printf("SP=%d\n", mem[4]);
+    printf("BP=%d\n", mem[5]);
+    printf("SI=%d\n", mem[6]);
+    printf("DI=%d\n", mem[7]);
 
     close(fd);
     fclose(output);
