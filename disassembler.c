@@ -72,9 +72,51 @@ int main(int argc, char **argv)
     fprintf(output, "BITS 16\n\n");
     while (read(fd, &buffer, 2) > 0)
     {
+        Byte1 *byte1 = (Byte1 *)&buffer[0];
+        Byte2 *byte2 = (Byte2 *)&buffer[1];
+        int regMem = 0;
+        int imRegMem = 0;
+        int imReg = 0;
+
         if (buffer[0] >> 1 == 0b01100011) {
-            Byte1 *byte1 = (Byte1 *)&buffer[0];
-            Byte2 *byte2 = (Byte2 *)&buffer[1];
+            printf("MOV ");
+            imRegMem = 1;
+        } else if (buffer[0] >> 2 == 0b00100000 && byte2->reg == 0b000) {
+            printf("ADD ");
+            imRegMem = 1;
+        } else if (buffer[0] >> 2 == 0b00100000 && byte2->reg == 0b101) {
+            printf("SUB ");
+            imRegMem = 1;
+        } else if (buffer[0] >> 2 == 0b00100000 && byte2->reg == 0b111) {
+            printf("CMP ");
+            imRegMem = 1;
+        } else if (buffer[0] >> 4 == 0b00001011) {
+            printf("MOV ");
+            imReg = 1;
+        } else if (buffer[0] >> 1 == 0b00000010) {
+            printf("ADD ");
+            imReg = 1;
+        } else if (buffer[0] >> 1 == 0b00010110) {
+            printf("SUB ");
+            imReg = 1;
+        } else if (buffer[0] >> 1 == 0b00011110) {
+            printf("CMP ");
+            imReg = 1;
+        } else if (buffer[0] >> 2 == 0b00100010) {
+            printf("MOV ");
+            regMem = 1;
+        } else if (buffer[0] >> 2 == 0b0) {
+            printf("ADD ");
+            regMem = 1;
+        } else if (buffer[0] >> 2 == 0b00001010) {
+            printf("SUB ");
+            regMem = 1;
+        } else if (buffer[0] >> 2 == 0b00001110) {
+            printf("CMP ");
+            regMem = 1;
+        }
+
+        if (imRegMem) {
             if (byte2->mod == 0b00) {
                 if (byte2->rm == 0b00000110) {
                     unsigned short dh;
@@ -82,21 +124,21 @@ int main(int argc, char **argv)
                     if (byte1->w) {
                     unsigned short hdata;
                     read(fd, &hdata, 2);
-                    printf("MOV [%d], %d\n", dh, hdata);
+                    printf("[%d], %d\n", dh, hdata);
                     } else {
                         unsigned char ldata;
                         read(fd, &ldata, 1);
-                        printf("MOV [%d], %d\n", dh, ldata);
+                        printf("[%d], %d\n", dh, ldata);
                     }
                 }
                 else if (byte1->w) {
                     unsigned short hdata;
                     read(fd, &hdata, 2);
-                    printf("MOV [%s], %d\n", MMOD_table[byte2->rm], hdata);
+                    printf("[%s], %d\n", MMOD_table[byte2->rm], hdata);
                 } else {
                     unsigned char ldata;
                     read(fd, &ldata, 1);
-                    printf("MOV [%s], %d\n", MMOD_table[byte2->rm], ldata);
+                    printf("[%s], %d\n", MMOD_table[byte2->rm], ldata);
                 }
             } else if (byte2->mod == 0b01) {
                 unsigned char dl;
@@ -104,53 +146,69 @@ int main(int argc, char **argv)
                 if (byte1->w) {
                     unsigned short hdata;
                     read(fd, &hdata, 2);
-                    printf("MOV [%s + %d], %d\n", MMOD_table[byte2->rm], dl, hdata);
+                    printf("[%s + %d], %d\n", MMOD_table[byte2->rm], dl, hdata);
                 } else {
                     unsigned char ldata;
                     read(fd, &ldata, 1);
-                    printf("MOV [%s + %d], %d\n", MMOD_table[byte2->rm], dl, ldata);
+                    printf("[%s + %d], %d\n", MMOD_table[byte2->rm], dl, ldata);
+                }
+            } else if (byte2->mod == 0b10) {
+                unsigned short dh;
+                read(fd, &dh, 2);
+                if (byte1->w) {
+                    unsigned short hdata;
+                    read(fd, &hdata, 2);
+                    printf("[%s + %d], %d\n", MMOD_table[byte2->rm], dh, hdata);
+                } else {
+                    unsigned char ldata;
+                    read(fd, &ldata, 1);
+                    printf("[%s + %d], %d\n", MMOD_table[byte2->rm], dh, ldata);
+                }
+            } else {
+                if (byte1->w) {
+                    unsigned short hdata;
+                    read(fd, &hdata, 2);
+                    printf("%s, %d\n", RMOD_table[byte2->rm][byte1->w], hdata);
+                } else {
+                    unsigned char ldata;
+                    read(fd, &ldata, 1);
+                    printf("%s, %d\n", RMOD_table[byte2->rm][byte1->w], ldata);
                 }
             }
         }
-        else if (buffer[0] >> 4 == 0b00001011) {
+        else if (imReg) {
             ImByte1 *imByte1 = (ImByte1 *)&buffer[0];
             unsigned char d[2];
             d[0] = buffer[1];
             if (imByte1->w) {
                 read(fd, d + 1, 1);
-                printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *(unsigned short *)d);
+                printf("%s, %d\n", RMOD_table[imByte1->reg][imByte1->w], *(unsigned short *)d);
             } else {
-                printf("MOV %s, %d\n", RMOD_table[imByte1->reg][imByte1->w], d[0]);
+                printf("%s, %d\n", RMOD_table[imByte1->reg][imByte1->w], d[0]);
             }
         } else {
-
-
-
-
-            Byte1 *byte1 = (Byte1 *)&buffer[0];
-            Byte2 *byte2 = (Byte2 *)&buffer[1];
         
             // register to register
             if (byte2->mod == 0b11) {
-                printf("MOV %s, %s\n", RMOD_table[byte2->rm][byte1->w], RMOD_table[byte2->reg][byte1->w]);
+                printf("%s, %s\n", RMOD_table[byte2->rm][byte1->w], RMOD_table[byte2->reg][byte1->w]);
             // no displacement
             } else if (byte2->mod == 0b00) {
                 unsigned char dh[2];
                 if (byte1->d == 0b0) {
                     if (byte2->rm == 0b00000110) {
                         read(fd, &dh, 2);
-                        printf("MOV [%d], %s\n", *((unsigned short *)dh), RMOD_table[byte2->reg][byte1->w]);
+                        printf("[%d], %s\n", *((unsigned short *)dh), RMOD_table[byte2->reg][byte1->w]);
                     }
                     else {
-                        printf("MOV [%s], %s\n", MMOD_table[byte2->rm], RMOD_table[byte2->reg][byte1->w]);
+                        printf("[%s], %s\n", MMOD_table[byte2->rm], RMOD_table[byte2->reg][byte1->w]);
                     }
                 }
                 else {
                     if (byte2->rm == 0b00000110) {
                         read(fd, &dh, 2);
-                        printf("MOV %s, [%d]\n", RMOD_table[byte2->reg][byte1->w], *((unsigned short *)dh));
+                        printf("%s, [%d]\n", RMOD_table[byte2->reg][byte1->w], *((unsigned short *)dh));
                     } else {
-                        printf("MOV %s, [%s]\n", RMOD_table[byte2->reg][byte1->w], MMOD_table[byte2->rm]);
+                        printf("%s, [%s]\n", RMOD_table[byte2->reg][byte1->w], MMOD_table[byte2->rm]);
                     }
                 }
             } else if (byte2->mod == 0b01) {
@@ -158,18 +216,18 @@ int main(int argc, char **argv)
                 read(fd, &dl, 1);
                 if (byte1->d == 0b0) {
                     //TODO: 110 is a special case
-                    printf("MOV [%s + %d], %s\n", MMOD_table[byte2->rm], dl, RMOD_table[byte2->reg][byte1->w]);
+                    printf("[%s + %d], %s\n", MMOD_table[byte2->rm], dl, RMOD_table[byte2->reg][byte1->w]);
                 } else {
-                    printf("MOV %s, [%s + %d]\n", RMOD_table[byte2->reg][byte1->w], MMOD_table[byte2->rm], dl);
+                    printf("%s, [%s + %d]\n", RMOD_table[byte2->reg][byte1->w], MMOD_table[byte2->rm], dl);
                 }
             } else if (byte2->mod == 0b10) {
                 unsigned char dh[2];
                 read(fd, &dh, 2);
                 if (byte1->d == 0b0) {
                     //TODO: 110 is a special case
-                    printf("MOV [%s + %d], %s\n", MMOD_table[byte2->rm], *((unsigned short *)dh), RMOD_table[byte2->reg][byte1->w]);
+                    printf("[%s + %d], %s\n", MMOD_table[byte2->rm], *((unsigned short *)dh), RMOD_table[byte2->reg][byte1->w]);
                 } else {
-                    printf("MOV %s, [%s + %d]\n", RMOD_table[byte2->reg][byte1->w], MMOD_table[byte2->rm], *((unsigned short *)dh));
+                    printf("%s, [%s + %d]\n", RMOD_table[byte2->reg][byte1->w], MMOD_table[byte2->rm], *((unsigned short *)dh));
                 }
             }
         }
