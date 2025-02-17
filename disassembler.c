@@ -6,6 +6,8 @@
 #include <fcntl.h>
 
 unsigned short mem[8] = {0};
+unsigned char flags[2] = {0};
+
 
 enum ops {
   MOV,
@@ -90,15 +92,19 @@ int main(int argc, char **argv)
         if (buffer[0] >> 1 == 0b01100011) {
             printf("MOV ");
             imRegMem = 1;
+            op = MOV;
         } else if (buffer[0] >> 2 == 0b00100000 && byte2->reg == 0b000) {
             printf("ADD ");
             imRegMem = 1;
+            op = ADD;
         } else if (buffer[0] >> 2 == 0b00100000 && byte2->reg == 0b101) {
             printf("SUB ");
             imRegMem = 1;
+            op = SUB;
         } else if (buffer[0] >> 2 == 0b00100000 && byte2->reg == 0b111) {
             printf("CMP ");
             imRegMem = 1;
+            op = CMP;
         } else if (buffer[0] >> 4 == 0b00001011) {
             printf("MOV ");
             imReg = 1;
@@ -110,21 +116,27 @@ int main(int argc, char **argv)
         } else if (buffer[0] >> 1 == 0b00010110) {
             printf("SUB ");
             imReg = 1;
+            op = SUB;
         } else if (buffer[0] >> 1 == 0b00011110) {
             printf("CMP ");
             imReg = 1;
+            op = CMP;
         } else if (buffer[0] >> 2 == 0b00100010) {
             printf("MOV ");
             regMem = 1;
+            op = MOV;
         } else if (buffer[0] >> 2 == 0b0) {
             printf("ADD ");
             regMem = 1;
+            op = ADD;
         } else if (buffer[0] >> 2 == 0b00001010) {
             printf("SUB ");
             regMem = 1;
+            op = SUB;
         } else if (buffer[0] >> 2 == 0b00001110) {
             printf("CMP ");
             regMem = 1;
+            op = CMP;
         }
 
         if (imRegMem) {
@@ -200,13 +212,34 @@ int main(int argc, char **argv)
             d[0] = buffer[1];
             if (w) {
                 read(fd, d + 1, 1);
+                int res = *(unsigned short *)d;
+                if (op == ADD) {
+                    res = res + *(unsigned short *)d;
+                } else if (op == SUB) {
+                    res = mem[opReg] - *(unsigned short *)d;
+                } 
+                else if (op == CMP) {
+                    res = mem[opReg] - *(unsigned short *)d;
+                }
+
+                if (res < 0) {
+                    flags[0] = 1;
+                    flags[1] = 0;
+                } else if (res > 0) {
+                    flags[0] = 0;
+                    flags[1] = 0;
+                } else {
+                    flags[0] = 0;
+                    flags[1] = 1;
+                }
                 printf("%s, %d; %d -> %d\n",
                     RMOD_table[opReg][w],
                     *(unsigned short *)d,
                     mem[opReg],
-                    *(unsigned short *)d
+                    res
                 );
-                mem[opReg] = *(unsigned short *)d;
+                printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
+                if (op != CMP)  mem[opReg] = res;
             }
             else {
                 unsigned char *reg;
@@ -236,8 +269,31 @@ int main(int argc, char **argv)
             if (byte2->mod == 0b11) {
                 printf("%s, %s; ", RMOD_table[byte2->rm][byte1->w], RMOD_table[byte2->reg][byte1->w]);
                 if (byte1->w) {
-                    printf("%d -> %d\n", mem[byte2->rm], mem[byte2->reg]);
-                    mem[byte2->rm] = mem[byte2->reg];
+
+                    int res = mem[byte2->reg];
+                    if (op == ADD) {
+                        res = mem[byte2->rm] + mem[byte2->reg];
+                    } else if (op == SUB) {
+                        res = mem[byte2->rm] - mem[byte2->reg];
+                    } 
+                    else if (op == CMP) {
+                        res = mem[byte2->rm] - mem[byte2->reg];
+                    }
+
+                    if (res < 0) {
+                        flags[0] = 1;
+                        flags[1] = 0;
+                    } else if (res > 0) {
+                        flags[0] = 0;
+                        flags[1] = 0;
+                    } else {
+                        flags[0] = 0;
+                        flags[1] = 1;
+                    }
+
+                    printf("%d -> %d\n", mem[byte2->rm], res);
+                    printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
+                    if (op != CMP) mem[byte2->rm] = res;
                 }
                 else {
                     unsigned char *dd;
@@ -302,23 +358,24 @@ int main(int argc, char **argv)
     }
 
     printf("----------RESULT-----------\n");
-    printf("AX=%d\n", mem[0]);
+    // printf("AX=%d\n", mem[0]);
     // printf("AH=%d\n", mem[0] & 0xFF);
     // printf("AL=%d\n", (mem[0] >> 8) & 0xFF);
+    printf("BX=%d\n", mem[3]);
     printf("CX=%d\n", mem[1]);
     // printf("CH=%d\n", mem[1] & 0xFF);
     // printf("CL=%d\n", (mem[1] >> 8) & 0xFF);
-    printf("DX=%d\n", mem[2]);
+    // printf("DX=%d\n", mem[2]);
     // printf("DH=%d\n", mem[2] & 0xFF);
     // printf("DL=%d\n", (mem[2] >> 8) & 0xFF);
-    printf("BX=%d\n", mem[3]);
     // printf("BH=%d\n", *((unsigned char *)&mem[3]));
     // printf("BL=%d\n", *((unsigned char *)&mem[3] + 1));
     printf("SP=%d\n", mem[4]);
-    printf("BP=%d\n", mem[5]);
-    printf("SI=%d\n", mem[6]);
-    printf("DI=%d\n", mem[7]);
+    // printf("BP=%d\n", mem[5]);
+    // printf("SI=%d\n", mem[6]);
+    // printf("DI=%d\n", mem[7]);
 
+    printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
     close(fd);
     fclose(output);
 
