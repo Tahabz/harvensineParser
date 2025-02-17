@@ -191,7 +191,29 @@ int main(int argc, char **argv)
                 if (byte1->w) {
                     unsigned short hdata;
                     read(fd, &hdata, 2);
-                    printf("%s, %d\n", RMOD_table[byte2->rm][byte1->w], hdata);
+                    int res = hdata;
+                    if (op == ADD) {
+                        res = mem[byte2->rm] + hdata;
+                    } else if (op == SUB) {
+                        res = mem[byte2->rm] - hdata;
+                    } 
+                    else if (op == CMP) {
+                        res = mem[byte2->rm] - hdata;
+                    }
+
+                    if (res < 0) {
+                        flags[0] = 1;
+                        flags[1] = 0;
+                    } else if (res > 0) {
+                        flags[0] = 0;
+                        flags[1] = 0;
+                    } else {
+                        flags[0] = 0;
+                        flags[1] = 1;
+                    }
+                    printf("%s, %d\n", RMOD_table[byte2->rm][byte1->w], res);
+                    printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
+                    if (op != CMP)  mem[byte2->rm] = res;
                 } else {
                     unsigned char ldata;
                     read(fd, &ldata, 1);
@@ -358,7 +380,7 @@ int main(int argc, char **argv)
     }
 
     printf("----------RESULT-----------\n");
-    // printf("AX=%d\n", mem[0]);
+    printf("AX=%d\n", mem[0]);
     // printf("AH=%d\n", mem[0] & 0xFF);
     // printf("AL=%d\n", (mem[0] >> 8) & 0xFF);
     printf("BX=%d\n", mem[3]);
