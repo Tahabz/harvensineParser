@@ -7,16 +7,12 @@
 
 unsigned short mem[8] = {0};
 
-// enum REGS {
-//   a,
-//   b,
-//   c,
-//   d,
-//   sp,
-//   bp,
-//   si,
-//   di
-// };
+enum ops {
+  MOV,
+  ADD,
+  SUB,
+  CMP,
+};
 
 typedef struct {
     unsigned char w : 1;
@@ -70,7 +66,7 @@ int main(int argc, char **argv)
     char *file_name = argv[1];
     FILE *output;
     int fd = open(file_name, O_RDONLY);
-
+    enum ops op;
     if (fd < 0)
     {
         printf("source does not exist or can't be read");
@@ -106,9 +102,11 @@ int main(int argc, char **argv)
         } else if (buffer[0] >> 4 == 0b00001011) {
             printf("MOV ");
             imReg = 1;
+            op = MOV;
         } else if (buffer[0] >> 1 == 0b00000010) {
             printf("ADD ");
             imReg = 1;
+            op = ADD;
         } else if (buffer[0] >> 1 == 0b00010110) {
             printf("SUB ");
             imReg = 1;
@@ -191,34 +189,40 @@ int main(int argc, char **argv)
         }
         //[]
         else if (imReg) {
-            ImByte1 *imByte1 = (ImByte1 *)&buffer[0];
+            unsigned char opReg = 0; // accumulator
+            unsigned char w = buffer[0] & 1;
+            if (op == MOV) {
+                ImByte1 *imByte1 = (ImByte1 *)&buffer[0];
+                opReg = imByte1->reg;
+                w = imByte1->w;
+            }
             unsigned char d[2];
             d[0] = buffer[1];
-            if (imByte1->w) {
+            if (w) {
                 read(fd, d + 1, 1);
                 printf("%s, %d; %d -> %d\n",
-                    RMOD_table[imByte1->reg][imByte1->w],
+                    RMOD_table[opReg][w],
                     *(unsigned short *)d,
-                    mem[imByte1->reg],
+                    mem[opReg],
                     *(unsigned short *)d
                 );
-                mem[imByte1->reg] = *(unsigned short *)d;
+                mem[opReg] = *(unsigned short *)d;
             }
             else {
                 unsigned char *reg;
-                if (imByte1->reg < 0b100 && !imByte1->w) {
-                    reg = (unsigned char *)&mem[imByte1->reg];
+                if (opReg < 0b100 && !w) {
+                    reg = (unsigned char *)&mem[opReg];
                     printf("%s, %d; %d -> %d\n",
-                        RMOD_table[imByte1->reg][imByte1->w],
+                        RMOD_table[opReg][w],
                         d[0],
                         *(reg + 1),
                         d[0]
                     );
                     *(reg + 1) = d[0];
                 } else {
-                    reg = (unsigned char *)&mem[imByte1->reg - 4];
+                    reg = (unsigned char *)&mem[opReg - 4];
                     printf("%s, %d; %d -> %d\n",
-                        RMOD_table[imByte1->reg][imByte1->w],
+                        RMOD_table[opReg][w],
                         d[0],
                         *(reg),
                         d[0]
