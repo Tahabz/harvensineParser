@@ -7,7 +7,7 @@
 
 unsigned short mem[8] = {0};
 unsigned char flags[2] = {0};
-
+int i = 0;
 
 enum ops {
   MOV,
@@ -82,7 +82,6 @@ int main(int argc, char **argv)
     }
     fprintf(output, "BITS 16\n\n");
     read(fd, &buffer, 1000);
-    int i = 0;
     while (buffer[i])
     {
         unsigned char opBuffer[2] = { buffer[i], buffer[i + 1] };
@@ -96,8 +95,12 @@ int main(int argc, char **argv)
         int imReg = 0;
     //[, , , b0]
         if (opBuffer[0] == 0b01110101) {
-            if (!flags[1]) i += *((char *)&buffer[12]);
-            continue;
+            if (!flags[1]) {
+                i += *((char *)&buffer[i - 1]);
+                printf("IP=%d\n", i);
+                continue;
+            }
+            printf("IP=%d\n", i);
         } else if (opBuffer[0] >> 1 == 0b01100011) {
             printf("MOV ");
             imRegMem = 1;
@@ -482,6 +485,7 @@ int main(int argc, char **argv)
     // printf("DI=%d\n", mem[7]);
 
     printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
+    printf("IP=%d\n", i);
     close(fd);
     fclose(output);
 
