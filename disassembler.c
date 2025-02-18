@@ -94,8 +94,11 @@ int main(int argc, char **argv)
         int regMem = 0;
         int imRegMem = 0;
         int imReg = 0;
-
-        if (opBuffer[0] >> 1 == 0b01100011) {
+    //[, , , b0]
+        if (opBuffer[0] == 0b01110101) {
+            if (!flags[1]) i += *((char *)&buffer[12]);
+            continue;
+        } else if (opBuffer[0] >> 1 == 0b01100011) {
             printf("MOV ");
             imRegMem = 1;
             op = MOV;
@@ -151,15 +154,15 @@ int main(int argc, char **argv)
                     // unsigned short dh;
                     // read(fd, &dh, 2);
                     unsigned char dh[2];
-                    dh[0] = opBuffer[0];
+                    dh[0] = buffer[i];
                     i += 1;
-                    dh[1] = opBuffer[0];
+                    dh[1] = opBuffer[i];
                     i += 1;
                     if (byte1->w) {
                         unsigned char hdata[2];
-                        hdata[0] = opBuffer[0];
+                        hdata[0] = buffer[0];
                         i += 1;
-                        hdata[1] = opBuffer[0];
+                        hdata[1] = buffer[0];
                         i += 1;
                         // unsigned short hdata;
                         // read(fd, &hdata, 2);
@@ -193,9 +196,9 @@ int main(int argc, char **argv)
             } else if (byte2->mod == 0b01) {
                 // unsigned char dl;
                 // read(fd, &dl, 1);
-                i += 1;
                 unsigned char dl;
-                dl = opBuffer[0];
+                dl = buffer[i];
+                i += 1;
                 if (byte1->w) {
                     // unsigned short hdata;
                     // read(fd, &hdata, 2);
