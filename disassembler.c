@@ -113,6 +113,7 @@ int main(int argc, char **argv)
                 continue;
             }
             printf("IP=%d\n", i);
+            continue;
         } else if (opBuffer[0] >> 1 == 0b01100011) {
             printf("MOV ");
             imRegMem = 1;
