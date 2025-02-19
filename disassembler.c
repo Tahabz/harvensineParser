@@ -5,8 +5,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-unsigned short mem[8] = {0};
+unsigned short RegMem[8] = {0};
 unsigned char flags[2] = {0};
+unsigned char memory[1024];
 int i = 0;
 
 enum ops {
@@ -54,6 +55,17 @@ char *MMOD_table[8] = {
     "DI",
     "BP",
     "BX"
+};
+
+unsigned char MMOD_map[8][2] = {
+    {3, 6},
+    {3, 2},
+    {5, 6},
+    {5, 7},
+    {6, 0},
+    {7, 0},
+    {5, 0},
+    {3, 0}
 };
 
 int main(int argc, char **argv)
@@ -170,6 +182,7 @@ int main(int argc, char **argv)
                         // unsigned short hdata;
                         // read(fd, &hdata, 2);
                         printf("[%d], %d\n", *((unsigned short *)dh), *((unsigned short *)hdata));
+                         *((unsigned short *)&memory[*((unsigned short *)dh)]) = *((unsigned short *)hdata);
                     } else {
                         unsigned char ldata;
                         ldata = buffer[i];
@@ -188,6 +201,13 @@ int main(int argc, char **argv)
                     hdata[1] = buffer[i];
                     i += 1;
                     printf("[%s], %d\n", MMOD_table[byte2->rm], *((unsigned short *)hdata));
+                    unsigned int regsValue;
+                    if (byte2->rm > 0b11) {
+                        regsValue = RegMem[MMOD_map[byte2->rm][0]];
+                    } else {
+                        regsValue = RegMem[MMOD_map[byte2->rm][0]] + RegMem[MMOD_map[byte2->rm][1]];
+                    }
+                    *((unsigned short *)&memory[regsValue]) =  *((unsigned short *)hdata);
                 } else {
                     // unsigned char ldata;
                     // read(fd, &ldata, 1);
@@ -211,6 +231,13 @@ int main(int argc, char **argv)
                     hdata[1] = buffer[i];
                     i += 1;
                     printf("[%s + %d], %d\n", MMOD_table[byte2->rm], dl, *((unsigned short *)hdata));
+                    unsigned int regsValue;
+                    if (byte2->rm > 0b11) {
+                        regsValue = RegMem[MMOD_map[byte2->rm][0]];
+                    } else {
+                        regsValue = RegMem[MMOD_map[byte2->rm][0]] + RegMem[MMOD_map[byte2->rm][1]];
+                    }
+                    *((unsigned short *)&memory[regsValue + dl]) =  *((unsigned short *)hdata);
                 } else {
                     // unsigned char ldata;
                     // read(fd, &ldata, 1);
@@ -235,7 +262,14 @@ int main(int argc, char **argv)
                     i += 1;
                     hdata[1] = buffer[i];
                     i += 1;
+                    unsigned int regsValue;
+                    if (byte2->rm > 0b11) {
+                        regsValue = RegMem[MMOD_map[byte2->rm][0]];
+                    } else {
+                        regsValue = RegMem[MMOD_map[byte2->rm][0]] + RegMem[MMOD_map[byte2->rm][1]];
+                    }
                     printf("[%s + %d], %d\n", MMOD_table[byte2->rm], *((unsigned short *)dh), *((unsigned short *)hdata));
+                    *((unsigned short *)&memory[regsValue]) = *((unsigned short *)hdata);
                 } else {
                     // unsigned char ldata;
                     // read(fd, &ldata, 1);
@@ -255,12 +289,12 @@ int main(int argc, char **argv)
                     i += 1;
                     int res = *((unsigned short *)hdata);
                     if (op == ADD) {
-                        res = mem[byte2->rm] + *((unsigned short *)hdata);
+                        res = RegMem[byte2->rm] + *((unsigned short *)hdata);
                     } else if (op == SUB) {
-                        res = mem[byte2->rm] - *((unsigned short *)hdata);
+                        res = RegMem[byte2->rm] - *((unsigned short *)hdata);
                     } 
                     else if (op == CMP) {
-                        res = mem[byte2->rm] - *((unsigned short *)hdata);
+                        res = RegMem[byte2->rm] - *((unsigned short *)hdata);
                     }
 
                     if (res < 0) {
@@ -278,11 +312,11 @@ int main(int argc, char **argv)
                         *((unsigned short *)hdata)
                     );
                     printf("%d --> %d\n",
-                        mem[byte2->rm],
+                        RegMem[byte2->rm],
                         res
                     );
                     printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
-                    if (op != CMP)  mem[byte2->rm] = res;
+                    if (op != CMP)  RegMem[byte2->rm] = res;
                 } else {
                     // unsigned char ldata;
                     // read(fd, &ldata, 1);
@@ -311,10 +345,10 @@ int main(int argc, char **argv)
                 if (op == ADD) {
                     res = res + *(unsigned short *)d;
                 } else if (op == SUB) {
-                    res = mem[opReg] - *(unsigned short *)d;
+                    res = RegMem[opReg] - *(unsigned short *)d;
                 } 
                 else if (op == CMP) {
-                    res = mem[opReg] - *(unsigned short *)d;
+                    res = RegMem[opReg] - *(unsigned short *)d;
                 }
 
                 if (res < 0) {
@@ -330,16 +364,16 @@ int main(int argc, char **argv)
                 printf("%s, %d; %d -> %d\n",
                     RMOD_table[opReg][w],
                     *(unsigned short *)d,
-                    mem[opReg],
+                    RegMem[opReg],
                     res
                 );
                 printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
-                if (op != CMP)  mem[opReg] = res;
+                if (op != CMP)  RegMem[opReg] = res;
             }
             else {
                 unsigned char *reg;
                 if (opReg < 0b100 && !w) {
-                    reg = (unsigned char *)&mem[opReg];
+                    reg = (unsigned char *)&RegMem[opReg];
                     printf("%s, %d; %d -> %d\n",
                         RMOD_table[opReg][w],
                         d[0],
@@ -348,7 +382,7 @@ int main(int argc, char **argv)
                     );
                     *(reg + 1) = d[0];
                 } else {
-                    reg = (unsigned char *)&mem[opReg - 4];
+                    reg = (unsigned char *)&RegMem[opReg - 4];
                     printf("%s, %d; %d -> %d\n",
                         RMOD_table[opReg][w],
                         d[0],
@@ -365,14 +399,14 @@ int main(int argc, char **argv)
                 printf("%s, %s; ", RMOD_table[byte2->rm][byte1->w], RMOD_table[byte2->reg][byte1->w]);
                 if (byte1->w) {
 
-                    int res = mem[byte2->reg];
+                    int res = RegMem[byte2->reg];
                     if (op == ADD) {
-                        res = mem[byte2->rm] + mem[byte2->reg];
+                        res = RegMem[byte2->rm] + RegMem[byte2->reg];
                     } else if (op == SUB) {
-                        res = mem[byte2->rm] - mem[byte2->reg];
+                        res = RegMem[byte2->rm] - RegMem[byte2->reg];
                     } 
                     else if (op == CMP) {
-                        res = mem[byte2->rm] - mem[byte2->reg];
+                        res = RegMem[byte2->rm] - RegMem[byte2->reg];
                     }
 
                     if (res < 0) {
@@ -386,24 +420,24 @@ int main(int argc, char **argv)
                         flags[1] = 1;
                     }
 
-                    printf("%d -> %d\n", mem[byte2->rm], res);
+                    printf("%d -> %d\n", RegMem[byte2->rm], res);
                     printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
-                    if (op != CMP) mem[byte2->rm] = res;
+                    if (op != CMP) RegMem[byte2->rm] = res;
                 }
                 else {
                     unsigned char *dd;
                     unsigned char *sd;
                     if (byte2->rm > 0b100) {
-                        dd = ((unsigned char *)&mem[byte2->rm - 4]);
+                        dd = ((unsigned char *)&RegMem[byte2->rm - 4]);
                     }
                     else {
-                        dd = ((unsigned char *)&mem[byte2->rm] + 1);
+                        dd = ((unsigned char *)&RegMem[byte2->rm] + 1);
                     }
                     if (byte2->reg > 0b100) {
-                        sd = ((unsigned char *)&mem[byte2->reg - 4]);
+                        sd = ((unsigned char *)&RegMem[byte2->reg - 4]);
                     }
                     else {
-                        sd = ((unsigned char *)&mem[byte2->reg] + 1);
+                        sd = ((unsigned char *)&RegMem[byte2->reg] + 1);
                     }
                     printf("%d -> ", *dd);
                     *dd = *sd;
@@ -470,22 +504,25 @@ int main(int argc, char **argv)
     // printf("AX=%d\n", mem[0]);
     // printf("AH=%d\n", mem[0] & 0xFF);
     // printf("AL=%d\n", (mem[0] >> 8) & 0xFF);
-    printf("BX=%d\n", mem[3]);
+    printf("BX=%d\n", RegMem[3]);
     // printf("CX=%d\n", mem[1]);
     // printf("CH=%d\n", mem[1] & 0xFF);
     // printf("CL=%d\n", (mem[1] >> 8) & 0xFF);
-    printf("DX=%d\n", mem[2]);
+    printf("DX=%d\n", RegMem[2]);
     // printf("DH=%d\n", mem[2] & 0xFF);
     // printf("DL=%d\n", (mem[2] >> 8) & 0xFF);
     // printf("BH=%d\n", *((unsigned char *)&mem[3]));
     // printf("BL=%d\n", *((unsigned char *)&mem[3] + 1));
-    printf("SP=%d\n", mem[4]);
-    printf("BP=%d\n", mem[5]);
+    printf("SP=%d\n", RegMem[4]);
+    printf("BP=%d\n", RegMem[5]);
     // printf("SI=%d\n", mem[6]);
-    // printf("DI=%d\n", mem[7]);
+    printf("DI=%d\n", RegMem[7]);
 
     printf("SF=%d, ZF=%d\n", flags[0], flags[1]);
     printf("IP=%d\n", i);
+
+    printf("memory[bp + di]=%d\n", *((unsigned short *)(&memory[RegMem[5] + RegMem[7]])));
+    printf("memory[bp]=%d\n", *((unsigned short *)(&memory[RegMem[5]])));
     close(fd);
     fclose(output);
 
