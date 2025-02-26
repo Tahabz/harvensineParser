@@ -8,6 +8,8 @@
 #include <stdbool.h>
 #include <math.h>
 #include <ctype.h>
+#include <sys/stat.h>
+
 
 typedef double f64;
 static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius);
@@ -22,6 +24,11 @@ typedef enum {
 } types;
 
 typedef struct {
+    unsigned char *data;
+    int length;
+} Buffer;
+
+typedef struct {
     float x0;
     float x1;
     float y0;
@@ -30,18 +37,17 @@ typedef struct {
 
 typedef struct {
     types type;
-    unsigned char *value;
+    Buffer buffer;
     int pos;
-    unsigned char length;
 } token;
 
 typedef struct {
-    int i;
-    unsigned char *buffer;
+    unsigned int i;
+    Buffer buffer;
 } Lexer;
 
 typedef struct {
     Lexer *l;
-    int pair_length;
-    Pair pairs[875741];
+    unsigned int pair_length;
+    unsigned int curr_pair;
 } Parser;
