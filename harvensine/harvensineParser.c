@@ -1,7 +1,7 @@
 #include "parser.h"
 #include "referenceHarvensince.c"
 #include <sys/time.h> // For gettimeofday()
-
+#include "time.c"
 
 bool cmp_key(unsigned char *str1, unsigned char *str2) {
     return str1[0] == str2[0] && str1[1] == str2[1];
@@ -88,11 +88,13 @@ token getToken(Lexer* l) {
             if (!isdigit(l->buffer.data[l->i])) {
                 if (l->buffer.data[l->i] == '.') {
                     if (point) {
+                        // printf("here?\n");
                         printf("INVALID JSON, Number expected\n");
                         exit(-1);
                     }
                     point = true;
                 } else {
+                    // printf("here???\n");
                     printf("INVALID JSON, Number expected\n");
                     exit(-1);
                 }
@@ -169,7 +171,11 @@ Pair parse(Parser *p) {
     bool y1 = false;
     Pair pair;
     if (token.type != OPBRACE) {
-        printf("INVALID JSON, EVERY PAIR SHOULD START WITH AN OPENING BRACE!!! \n");
+        printf("pair count = %d\n", p->pair_length);
+        printf("type=%d\n", token.type);
+        printf("i=%d\n", l->i);
+        write(1, token.buffer.data, token.buffer.length);
+        printf("\nINVALID JSON, EVERY PAIR SHOULD START WITH AN OPENING BRACE!!! \n");
         exit(-1);
     }
     while (true)
@@ -234,49 +240,84 @@ Buffer allocate_buffer(unsigned long long size) {
 }
 
 int main(int argc, const char **argv) {
-    if (argc < 2)
-    {
-        printf("please enter the file name!");
-        return -1;
-    }
+    u_int64 start = ReadOSTimer();
+    u_int64 startUpStart = ReadCpuTimer();
+        if (argc < 2)
+        {
+            printf("please enter the file name!");
+            return -1;
+        }
 
-    const char *file_name = argv[1];
-    int fd = open(file_name, O_RDONLY);
+        const char *file_name = argv[1];
+    u_int64 startUpEnd = ReadCpuTimer();
 
-    unsigned int size = file_size(file_name);
-    Buffer buffer = allocate_buffer(size);
+    
+    u_int64 memSetupStart = ReadCpuTimer();
+        int fd = open(file_name, O_RDONLY);
+        unsigned int size = file_size(file_name);
+        Buffer buffer = allocate_buffer(size);
+        Lexer l;
+        init_lexer(&l, buffer);
+        Parser p;
+        init_parser(&p, &l);
+        unsigned char min_pair_encoding = 6*4+6; // {"x0":0,"y0":0,"x1":0,"y1":0}
+        unsigned long long max_pair_count = (buffer.length + 1) / min_pair_encoding;
+        Buffer parsed_pairs = allocate_buffer(max_pair_count * sizeof(Pair));
+        Pair *pairs = (Pair *)parsed_pairs.data;
+    u_int64 memSetupEnd = ReadCpuTimer();
 
-    read(fd, buffer.data, buffer.length);
-    Lexer l;
-    init_lexer(&l, buffer);
-    Parser p;
-    init_parser(&p, &l);
+    u_int64 readStart = ReadCpuTimer();
+        read(fd, buffer.data, buffer.length);
+    u_int64 readEnd = ReadCpuTimer();
 
-    unsigned char min_pair_encoding = 6*4+6; // {"x0":0,"y0":0,"x1":0,"y1":0}
-    unsigned long long max_pair_count = (buffer.length + 1) / min_pair_encoding;
-    Buffer parsed_pairs = allocate_buffer(max_pair_count * sizeof(Pair));
+    u_int64 parseStart = ReadCpuTimer();
+        while(l.i < size - 1) {
+            pairs[p.pair_length] = parse(&p);
+        }
+    u_int64 parseEnd = ReadCpuTimer();
 
-    Pair *pairs = (Pair *)parsed_pairs.data;
+    u_int64 sumStart = ReadCpuTimer();
+        int i;
+        int res = 0;
+        while (i < p.pair_length) {
+            res += ReferenceHaversine(
+                pairs[i].x0,
+                pairs[i].x1,
+                pairs[i].y0,
+                pairs[i].y1,
+                6372.8
+            );
+            i += 1;
+        }
+    u_int64 sumEnd = ReadCpuTimer();
+    
+    u_int64 printStart = ReadCpuTimer();
+        printf("Input Size: %d\n", sizeof(pairs));
+        printf("Pair Count: %d\n", p.pair_length);
+        printf("Harvensine Average Sum: %f\n", (float)res / i);
+    u_int64 printEnd = ReadCpuTimer();
 
-    struct timeval start, end;
-    long seconds, microseconds;
-    double elapsed_ms;
+    u_int64 end = ReadOSTimer();
 
-    gettimeofday(&start, NULL);
-    while(l.i < size - 1) {
-        pairs[p.pair_length] = parse(&p);;
-    }
-    gettimeofday(&end, NULL);
+    printf("\n------------------------------------------------\n");
+    float totalTime = (end - start);
+    u_int64 startup =  startUpEnd - startUpStart;
+    u_int64 read = readEnd - readStart;
+    u_int64 memorySetup = memSetupEnd - memSetupStart;
+    u_int64 parse = parseEnd - parseStart;
+    u_int64 sum = sumEnd - sumStart;
+    u_int64 print = printEnd - printStart;
 
-    seconds = end.tv_sec - start.tv_sec;
-    microseconds = end.tv_usec - start.tv_usec;
-    elapsed_ms = (seconds * 1000) + (microseconds / 1000.0);
+    u_int64 totalCpu = startup + read + memorySetup + parse + sum + print;
+    u_int64 cpuFreq = GetCpuFreq(totalCpu, totalTime);
 
-    // Print the result
-    printf("C: %.2f ms\n", elapsed_ms );
-    printf("size=%d, max_pair_count=%llu, actual_pair_count=%d, alocated_pairs=%llu\n", size, max_pair_count, p.pair_length, max_pair_count * sizeof(Pair) );
-    printf("%f\n", pairs[p.pair_length - 1].x0);
-    // printf("pi=%d, total=%f, average=%f\n", p.pair_length, res, res/p.pair_length);
+    printf("Total time: %.3fs (CPU freq %u)\n", totalTime/1000000, cpuFreq);
+    printf("Start up: %u (%d\%)\n", startup, startup * 100 / totalCpu);
+    printf("Read: %u (%d\%)\n", read, read * 100 / totalCpu);
+    printf("Mem setup: %u (%d\%)\n", memorySetup, memorySetup * 100 / totalCpu);
+    printf("Parse: %u (%d\%)\n", parse, parse * 100 / totalCpu);
+    printf("Sum: %u (%d\%)\n", sum, sum * 100 / totalCpu);
+    printf("Print: %u (%d\%)\n", print, print * 100 / totalCpu);
+
     return 0;
 }
- 
