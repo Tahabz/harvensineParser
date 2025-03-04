@@ -10,7 +10,7 @@
 #include <ctype.h>
 #include <sys/stat.h>
 
-
+typedef unsigned long long u64;
 typedef double f64;
 static f64 ReferenceHaversine(f64 X0, f64 Y0, f64 X1, f64 Y1, f64 EarthRadius);
 typedef enum {

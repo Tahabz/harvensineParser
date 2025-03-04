@@ -6,7 +6,8 @@ int main(int argc, char **argv) {
     FILE *fd = fopen("./harvensine.json", "wb");
     fprintf(fd, "[");
     int i = 0;
-    float count = 80000;
+    float count = 1000000;
+    if (argv[2]) count = atoi(argv[2]);
     float res = 0;
     if (!argv[1]) {
         printf("ENTER THE FUCKING SEED!!\n");

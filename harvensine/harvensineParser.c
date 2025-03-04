@@ -240,8 +240,8 @@ Buffer allocate_buffer(unsigned long long size) {
 }
 
 int main(int argc, const char **argv) {
-    u_int64 start = ReadOSTimer();
-    u_int64 startUpStart = ReadCpuTimer();
+    u64 start = ReadOSTimer();
+    u64 startUpStart = ReadCpuTimer();
         if (argc < 2)
         {
             printf("please enter the file name!");
@@ -249,10 +249,10 @@ int main(int argc, const char **argv) {
         }
 
         const char *file_name = argv[1];
-    u_int64 startUpEnd = ReadCpuTimer();
+    u64 startUpEnd = ReadCpuTimer();
 
     
-    u_int64 memSetupStart = ReadCpuTimer();
+    u64 memSetupStart = ReadCpuTimer();
         int fd = open(file_name, O_RDONLY);
         unsigned int size = file_size(file_name);
         Buffer buffer = allocate_buffer(size);
@@ -264,20 +264,20 @@ int main(int argc, const char **argv) {
         unsigned long long max_pair_count = (buffer.length + 1) / min_pair_encoding;
         Buffer parsed_pairs = allocate_buffer(max_pair_count * sizeof(Pair));
         Pair *pairs = (Pair *)parsed_pairs.data;
-    u_int64 memSetupEnd = ReadCpuTimer();
+    u64 memSetupEnd = ReadCpuTimer();
 
-    u_int64 readStart = ReadCpuTimer();
+    u64 readStart = ReadCpuTimer();
         read(fd, buffer.data, buffer.length);
-    u_int64 readEnd = ReadCpuTimer();
+    u64 readEnd = ReadCpuTimer();
 
-    u_int64 parseStart = ReadCpuTimer();
+    u64 parseStart = ReadCpuTimer();
         while(l.i < size - 1) {
             pairs[p.pair_length] = parse(&p);
         }
-    u_int64 parseEnd = ReadCpuTimer();
+    u64 parseEnd = ReadCpuTimer();
 
-    u_int64 sumStart = ReadCpuTimer();
-        int i;
+    u64 sumStart = ReadCpuTimer();
+        unsigned int i = 0;
         int res = 0;
         while (i < p.pair_length) {
             res += ReferenceHaversine(
@@ -289,35 +289,35 @@ int main(int argc, const char **argv) {
             );
             i += 1;
         }
-    u_int64 sumEnd = ReadCpuTimer();
+    u64 sumEnd = ReadCpuTimer();
     
-    u_int64 printStart = ReadCpuTimer();
-        printf("Input Size: %d\n", sizeof(pairs));
+    u64 printStart = ReadCpuTimer();
+        printf("Input Size: %lu\n", sizeof(pairs));
         printf("Pair Count: %d\n", p.pair_length);
         printf("Harvensine Average Sum: %f\n", (float)res / i);
-    u_int64 printEnd = ReadCpuTimer();
+    u64 printEnd = ReadCpuTimer();
 
-    u_int64 end = ReadOSTimer();
+    u64 end = ReadOSTimer();
 
     printf("\n------------------------------------------------\n");
     float totalTime = (end - start);
-    u_int64 startup =  startUpEnd - startUpStart;
-    u_int64 read = readEnd - readStart;
-    u_int64 memorySetup = memSetupEnd - memSetupStart;
-    u_int64 parse = parseEnd - parseStart;
-    u_int64 sum = sumEnd - sumStart;
-    u_int64 print = printEnd - printStart;
+    u64 startup =  startUpEnd - startUpStart;
+    u64 read = readEnd - readStart;
+    u64 memorySetup = memSetupEnd - memSetupStart;
+    u64 parse = parseEnd - parseStart;
+    u64 sum = sumEnd - sumStart;
+    u64 print = printEnd - printStart;
 
-    u_int64 totalCpu = startup + read + memorySetup + parse + sum + print;
-    u_int64 cpuFreq = GetCpuFreq(totalCpu, totalTime);
+    u64 totalCpu = startup + read + memorySetup + parse + sum + print;
+    u64 cpuFreq = GetCpuFreq(totalCpu, totalTime);
 
-    printf("Total time: %.3fs (CPU freq %u)\n", totalTime/1000000, cpuFreq);
-    printf("Start up: %u (%d\%)\n", startup, startup * 100 / totalCpu);
-    printf("Read: %u (%d\%)\n", read, read * 100 / totalCpu);
-    printf("Mem setup: %u (%d\%)\n", memorySetup, memorySetup * 100 / totalCpu);
-    printf("Parse: %u (%d\%)\n", parse, parse * 100 / totalCpu);
-    printf("Sum: %u (%d\%)\n", sum, sum * 100 / totalCpu);
-    printf("Print: %u (%d\%)\n", print, print * 100 / totalCpu);
+    printf("Total time: %.3fs (CPU freq %llu)\n", totalTime/1000000, cpuFreq);
+    printf("Start up: %llu (%.4f\%%)\n", startup, (float)startup * 100 / totalCpu);
+    printf("Read: %llu (%.4f\%%)\n", read, (float)read * 100 / totalCpu);
+    printf("Mem setup: %llu (%.4f\%%)\n", memorySetup, (float)memorySetup * 100 / totalCpu);
+    printf("Parse: %llu (%.4f\%%)\n", parse, (float)parse * 100 / totalCpu);
+    printf("Sum: %llu (%.4f\%%)\n", sum, (float)sum * 100 / totalCpu);
+    printf("Print: %llu (%.4f\%%)\n", print, (float)print * 100 / totalCpu);
 
     return 0;
 }
