@@ -2,7 +2,7 @@
 #include <stdio.h>
 
 typedef unsigned long long u64;
-#if WIN_32
+#if _WIN32
 #include <intrin.h>
 #include <windows.h>
 
