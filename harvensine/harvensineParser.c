@@ -309,7 +309,7 @@ int main(int argc, const char **argv) {
     u64 print = printEnd - printStart;
 
     u64 totalCpu = startup + read + memorySetup + parse + sum + print;
-    u64 cpuFreq = GetCpuFreq(totalCpu, totalTime);
+    u64 cpuFreq = GetCpuFreq();
 
     printf("Total time: %.3fs (CPU freq %llu)\n", totalTime/1000000, cpuFreq);
     printf("Start up: %llu (%.4f\%%)\n", startup, (float)startup * 100 / totalCpu);

@@ -50,9 +50,11 @@ static u64 ReadCpuTimer(void) {
     return cnt;
 }
 
-static u64 GetCpuFreq(u64 cpuElapsed, u64 osElapsed) {
-    u64 osFreq = GetOsTimeFreq();
-    return osFreq * cpuElapsed / osElapsed;
+static u64 GetCpuFreq(void) {
+    u64 cnt;
+    __asm__ volatile("mrs %0, CNTFRQ_EL0" : "=r"(cnt));
+
+    return cnt;
 }
 
 #endif
