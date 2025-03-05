@@ -174,7 +174,6 @@ float get_value(Lexer *l)
 
 Pair parse(Parser *p)
 {
-    PROFILE_FUNCTION();
     Lexer *l = p->l;
     token token = getToken(l);
     if (token.type == OPBRACKET)
@@ -267,6 +266,7 @@ Pair parse(Parser *p)
 
 unsigned int file_size(const char *filename)
 {
+    PROFILE_FUNCTION
     struct stat st;
     stat(filename, &st);
     return st.st_size;
@@ -274,6 +274,7 @@ unsigned int file_size(const char *filename)
 
 Buffer allocate_buffer(unsigned long long size)
 {
+    PROFILE_FUNCTION
     Buffer buffer = {};
     buffer.data = malloc(size);
     buffer.length = size;
@@ -284,7 +285,7 @@ int main(int argc, const char **argv)
 {
     // u64 start = ReadOSTimer();
     // u64 startUpStart = ReadCpuTimer();
-    INIT_PROFILE();
+    INIT_PROFILE;
     if (argc < 2)
     {
         printf("please enter the file name!");
@@ -314,7 +315,7 @@ int main(int argc, const char **argv)
 
     // u64 parseStart = ReadCpuTimer();
     {
-        // PROFILE_BLOCK("PARSING");
+        PROFILE_BLOCK("PARSING");
         while (l.i < size - 1)
         {
             pairs[p.pair_length] = parse(&p);
@@ -339,7 +340,7 @@ int main(int argc, const char **argv)
         }
     }
 
-    END_PROFILE();
+    END_PROFILE;
     // u64 sumEnd = ReadCpuTimer();
     // u64 printStart = ReadCpuTimer();
     //     printf("Input Size: %lu\n", sizeof(pairs));
