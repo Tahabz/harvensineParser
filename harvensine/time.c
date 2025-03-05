@@ -1,6 +1,6 @@
 
 #include <stdio.h>
-
+#include <string.h>
 typedef unsigned long long u64;
 #if _WIN32
 #include <intrin.h>
@@ -59,3 +59,98 @@ static u64 GetCpuFreq(void) {
 
 #endif
 
+
+typedef struct {
+    const char *blockName;
+    u64 start;
+    u64 cpuElapsed;
+} blockData;
+
+typedef struct {
+    blockData blocks[20];
+    unsigned char count;
+} profilerData;
+
+profilerData data;
+
+int cmp(const char *str1, const char *str2) {
+    int len1 = strlen(str1);
+    int len2 = strlen(str2);
+
+    if (len1 != len2) return 0;
+    int i = 0;
+    while (i < len1) {
+        if (str1[i] != str2[i]) return 0;
+        i += 1;
+    }
+
+    return 1;
+}
+
+int blockPosByName(const char *name) {
+    unsigned char i = 0;
+    while (i < data.count) {
+        if (cmp(data.blocks[i].blockName, name)) {
+            return i;
+        }
+        i += 1;
+    }
+    return -1;
+}
+
+static int init_block(const char *blockName) {
+    blockData *block = &data.blocks[data.count];
+    int pos = blockPosByName(blockName);
+    if (pos != -1)  block = &data.blocks[pos];
+    else
+    {
+        block->blockName = blockName;
+        pos = data.count;
+        data.count += 1;
+        block->cpuElapsed = 0;
+    }
+    block->start = ReadCpuTimer();
+    return pos;
+}
+
+#define PROFILE_FUNCTION() \
+    int pos = init_block(__func__); \
+    __attribute__((cleanup(_block_cleanup))) int blockPos = pos;
+
+#define PROFILE_BLOCK(blockName) \
+    int pos = init_block(blockName); \
+    __attribute__((cleanup(_block_cleanup))) int blockPos = pos;
+
+static void _block_cleanup(int *blockPos) {
+    blockData *block = &data.blocks[*blockPos];
+    u64 end = ReadCpuTimer();
+    u64 elapsed = end - block->start;
+    block->cpuElapsed += elapsed;
+}
+
+static void INIT_PROFILE() {
+    data.count = 0;
+    data.blocks[0].start = ReadCpuTimer();
+    data.blocks[0].blockName = "TOTAL";
+    data.count += 1;
+}
+
+static int getPercentile(u64 max, u64 var) {
+    return var * 100 / max;
+}
+
+static void printData (const char *name, u64 elapsed, u64 total) {
+    printf("%s = %llu (%d%%)\n", name, elapsed, getPercentile(total, elapsed));   
+}
+
+static void END_PROFILE()
+{
+    u64 end = ReadCpuTimer();
+    u64 elapsed = end - data.blocks[0].start;
+    data.blocks[0].cpuElapsed = elapsed;
+    unsigned char i = 0;
+    while (i < data.count) {
+        printData(data.blocks[i].blockName, data.blocks[i].cpuElapsed, elapsed);
+        i += 1;
+    }
+}
