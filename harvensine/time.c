@@ -113,9 +113,7 @@ static int init_block(const char *blockName) {
     return pos;
 }
 
-#define PROFILE_FUNCTION() \
-    int pos = init_block(__func__); \
-    __attribute__((cleanup(_block_cleanup))) int blockPos = pos;
+#define PROFILE_FUNCTION PROFILE_BLOCK(__func__)
 
 #define PROFILE_BLOCK(blockName) \
     int pos = init_block(blockName); \
