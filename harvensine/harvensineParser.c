@@ -202,47 +202,51 @@ Pair parse(Parser *p)
         printf("\nINVALID JSON, EVERY PAIR SHOULD START WITH AN OPENING BRACE!!! \n");
         exit(-1);
     }
-    while (true)
     {
-        token = getToken(l);
-        if (token.type != IDENTIFIER)
+        PROFILE_BLOCK("PAIR PARSING");
+        while (true)
         {
-            printf("INVALID JSON, KEY EXPECTED\n");
-            exit(-1);
+            token = getToken(l);
+            if (token.type != IDENTIFIER)
+            {
+                printf("INVALID JSON, KEY EXPECTED\n");
+                exit(-1);
+            }
+            if (cmp_key(token.buffer.data, (unsigned char *)"x0"))
+            {
+                pair.x0 = get_value(l);
+                x0 = true;
+            }
+            else if (cmp_key(token.buffer.data, (unsigned char *)"x1"))
+            {
+                pair.x1 = get_value(l);
+                x1 = true;
+            }
+            else if (cmp_key(token.buffer.data, (unsigned char *)"y0"))
+            {
+                pair.y0 = get_value(l);
+                y0 = true;
+            }
+            else if (cmp_key(token.buffer.data, (unsigned char *)"y1"))
+            {
+                pair.y1 = get_value(l);
+                y1 = true;
+            }
+            else
+            {
+                printf("INVALID KEY DETECTED\n");
+                exit(-1);
+            }
+            if (x0 && x1 && y0 && y1)
+                break;
+            token = getToken(l);
+            if (token.type != COMMA)
+            {
+                printf("INVALID JSON, COMMA VALUE EXPECTED\n");
+                exit(-1);
+            }
         }
-        if (cmp_key(token.buffer.data, (unsigned char *)"x0"))
-        {
-            pair.x0 = get_value(l);
-            x0 = true;
-        }
-        else if (cmp_key(token.buffer.data, (unsigned char *)"x1"))
-        {
-            pair.x1 = get_value(l);
-            x1 = true;
-        }
-        else if (cmp_key(token.buffer.data, (unsigned char *)"y0"))
-        {
-            pair.y0 = get_value(l);
-            y0 = true;
-        }
-        else if (cmp_key(token.buffer.data, (unsigned char *)"y1"))
-        {
-            pair.y1 = get_value(l);
-            y1 = true;
-        }
-        else
-        {
-            printf("INVALID KEY DETECTED\n");
-            exit(-1);
-        }
-        if (x0 && x1 && y0 && y1)
-            break;
-        token = getToken(l);
-        if (token.type != COMMA)
-        {
-            printf("INVALID JSON, COMMA VALUE EXPECTED\n");
-            exit(-1);
-        }
+
     }
     p->pair_length += 1;
     token = getToken(l);

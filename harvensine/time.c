@@ -64,6 +64,8 @@ typedef struct {
     const char *blockName;
     u64 start;
     u64 cpuElapsed;
+    u64 childrenElapsed;
+    u64 parentIndex;
     unsigned char hit;
 } blockData;
 
@@ -72,12 +74,14 @@ typedef struct {
 } profilerData;
 
 static profilerData data;
-
+static u64 globalParentIndex;
 
 static void init_block(const char *blockName, int pos) {
     blockData *block = &data.blocks[pos];
+    block->parentIndex = globalParentIndex;
     block->blockName = blockName;
     block->start = ReadCpuTimer();
+    globalParentIndex = pos;
 }
 
 #define PROFILE_FUNCTION PROFILE_BLOCK(__func__)
@@ -89,9 +93,11 @@ static void init_block(const char *blockName, int pos) {
 
 static void _block_cleanup(int *blockPos) {
     blockData *block = &data.blocks[*blockPos];
+    globalParentIndex = block->parentIndex;
     u64 end = ReadCpuTimer();
     u64 elapsed = end - block->start;
     block->cpuElapsed += elapsed;
+    data.blocks[block->parentIndex].childrenElapsed += elapsed;
     block->hit += 1;
 }
 
@@ -104,8 +110,16 @@ static int getPercentile(u64 max, u64 var) {
     return var * 100 / max;
 }
 
-static void printData (const char *name, u64 elapsed, u64 total, unsigned char hit) {
-    printf("%s = %llu (%d%%, HIT %d times)\n", name, elapsed, getPercentile(total, elapsed), hit);   
+static void printData (blockData block, u64 total) {
+    printf("%s[%d] = %llu (%d%%)",
+        block.blockName,
+        block.hit,
+        block.cpuElapsed,
+        getPercentile(total, block.cpuElapsed - block.childrenElapsed)
+    );
+    if (block.childrenElapsed) {
+        printf("  w/children %d%%\n", getPercentile(total, block.cpuElapsed));
+    } else printf("\n");
 }
 
 
@@ -119,7 +133,7 @@ static void _end_profile(unsigned char counter)
     data.blocks[0].cpuElapsed = elapsed;
     unsigned char i = 0;
     while (i < counter) {
-        printData(data.blocks[i].blockName, data.blocks[i].cpuElapsed, elapsed, data.blocks[i].hit);
+        printData(data.blocks[i], elapsed);
         i += 1;
     }
 }
