@@ -1,4 +1,3 @@
-
 #include <stdio.h>
 #include <string.h>
 typedef unsigned long long u64;
@@ -93,6 +92,52 @@ typedef struct
 static profilerData data;
 u64 globalParentIndex = 0;
 
+static int getPercentile(u64 max, u64 var)
+{
+    return var * 100 / max;
+}
+
+static void printData(anchor *anchor)
+{
+    printf("%s[%d] = %llu (%d%%)",
+           anchor->label,
+           anchor->hit,
+           anchor->inclusive,
+           getPercentile(data.elapsed, anchor->exclusive));
+    if (anchor->exclusive != anchor->inclusive)
+    {
+        printf("  w/children %d%%\n", getPercentile(data.elapsed, anchor->inclusive));
+    }
+    else
+        printf("\n");
+}
+
+
+static void init_profile()
+{
+    data.start = ReadCpuTimer();
+}
+
+static void _end_profile(unsigned char counter)
+{
+    u64 end = ReadCpuTimer();
+    u64 elapsed = end - data.start;
+    data.elapsed = elapsed;
+    unsigned char i = 1;
+    printf("CLOCK FREQ: %lluHz\n", GetCpuFreq());
+    printf("TOTAL = %llu (%.2fms) \n\n\n", data.elapsed, (float)data.elapsed * 1000 / GetCpuFreq());
+    while (i < counter)
+    {
+        printData(&data.anchors[i]);
+        i += 1;
+    }
+}
+
+#define END_PROFILE _end_profile(__COUNTER__ + 1)
+#define INIT_PROFILE init_profile()
+
+#ifdef PROFILER
+
 static void init_block(blockData *block, int anchorIndex, const char *label)
 {
     block->parentIndex = globalParentIndex;
@@ -122,47 +167,7 @@ static void _block_cleanup(blockData *block)
     anchor->inclusive = elapsed + block->oldTSCElapsed;
     anchor->hit += 1;
 }
-
-static void init_profile()
-{
-    data.start = ReadCpuTimer();
-}
-
-static int getPercentile(u64 max, u64 var)
-{
-    return var * 100 / max;
-}
-
-static void printData(anchor *anchor)
-{
-    printf("%s[%d] = %llu (%d%%)",
-           anchor->label,
-           anchor->hit,
-           anchor->inclusive,
-           getPercentile(data.elapsed, anchor->exclusive));
-    if (anchor->exclusive != anchor->inclusive)
-    {
-        printf("  w/children %d%%\n", getPercentile(data.elapsed, anchor->inclusive));
-    }
-    else
-        printf("\n");
-}
-
-
-#define END_PROFILE _end_profile(__COUNTER__ + 1)
-#define INIT_PROFILE init_profile()
-
-static void _end_profile(unsigned char counter)
-{
-    u64 end = ReadCpuTimer();
-    u64 elapsed = end - data.start;
-    data.elapsed = elapsed;
-    unsigned char i = 1;
-    printf("CLOCK FREQ: %lluHz\n", GetCpuFreq());
-    printf("TOTAL = %llu (%.2fms) \n\n\n", data.elapsed, (float)data.elapsed * 1000 / GetCpuFreq());
-    while (i < counter)
-    {
-        printData(&data.anchors[i]);
-        i += 1;
-    }
-}
+#else
+    #define PROFILE_BLOCK(...)
+    #define PROFILE_FUNCTION
+#endif

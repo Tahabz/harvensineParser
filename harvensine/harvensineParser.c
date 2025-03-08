@@ -1,3 +1,5 @@
+// #define PROFILER 0
+
 #include "parser.h"
 #include "referenceHarvensince.c"
 #include <sys/time.h> // For gettimeofday()
@@ -23,6 +25,7 @@ void skip_white_space(Lexer *l)
 
 token getToken(Lexer *l)
 {
+    // PROFILE_FUNCTION
     token token;
     int length = 0;
     bool point = false;
@@ -86,6 +89,7 @@ token getToken(Lexer *l)
             l->i += 1;
             length += 1;
         }
+        // PROFILE_BLOCK("GETTOKEN WHILE")
         while (l->buffer.data[l->i] != '"' &&
                l->buffer.data[l->i] != ',' &&
                l->buffer.data[l->i] != '}' &&
@@ -136,6 +140,7 @@ void init_parser(Parser *p, Lexer *l)
 
 float get_value(Lexer *l)
 {
+    // PROFILE_FUNCTION
     token t;
     t = getToken(l);
     if (t.type != COLON)
@@ -203,7 +208,7 @@ Pair parse(Parser *p)
         exit(-1);
     }
     {
-        PROFILE_BLOCK("PAIR PARSING");
+        // PROFILE_BLOCK("PAIR PARSING");
         while (true)
         {
             token = getToken(l);
