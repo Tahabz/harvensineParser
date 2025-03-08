@@ -70,9 +70,8 @@ static u64 GetCpuFreq(void)
 typedef struct
 {
     const char *label;
-    u64 cpuElapsed;
-    u64 childrenElapsed;
-    u64 rootElapsed;
+    u64 inclusive;
+    u64 exclusive;
     unsigned char hit;
 } anchor;
 
@@ -100,7 +99,7 @@ static void init_block(blockData *block, int anchorIndex, const char *label)
     block->anchorIndex = anchorIndex;
     data.anchors[anchorIndex].label = label;
     block->start = ReadCpuTimer();
-    block->oldTSCElapsed = data.anchors[anchorIndex].rootElapsed;
+    block->oldTSCElapsed = data.anchors[anchorIndex].inclusive;
     globalParentIndex = anchorIndex;
 }
 
@@ -118,9 +117,9 @@ static void _block_cleanup(blockData *block)
     globalParentIndex = block->parentIndex;
     u64 end = ReadCpuTimer();
     u64 elapsed = end - block->start;
-    anchor->cpuElapsed += elapsed;
-    data.anchors[block->parentIndex].childrenElapsed += elapsed;
-    anchor->rootElapsed = elapsed + block->oldTSCElapsed;
+    data.anchors[block->parentIndex].exclusive -= elapsed;
+    anchor->exclusive += elapsed;
+    anchor->inclusive = elapsed + block->oldTSCElapsed;
     anchor->hit += 1;
 }
 
@@ -139,11 +138,11 @@ static void printData(anchor *anchor)
     printf("%s[%d] = %llu (%d%%)",
            anchor->label,
            anchor->hit,
-           anchor->rootElapsed,
-           getPercentile(data.elapsed, anchor->cpuElapsed - anchor->childrenElapsed));
-    if (anchor->childrenElapsed)
+           anchor->inclusive,
+           getPercentile(data.elapsed, anchor->exclusive));
+    if (anchor->exclusive != anchor->inclusive)
     {
-        printf("  w/children %d%%\n", getPercentile(data.elapsed, anchor->rootElapsed));
+        printf("  w/children %d%%\n", getPercentile(data.elapsed, anchor->inclusive));
     }
     else
         printf("\n");
