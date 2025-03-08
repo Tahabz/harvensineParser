@@ -159,7 +159,8 @@ static void _end_profile(unsigned char counter)
     u64 elapsed = end - data.start;
     data.elapsed = elapsed;
     unsigned char i = 1;
-    printf("TOTAL = %llu \n", data.elapsed);
+    printf("CLOCK FREQ: %lluHz\n", GetCpuFreq());
+    printf("TOTAL = %llu (%.2fms) \n\n\n", data.elapsed, (float)data.elapsed * 1000 / GetCpuFreq());
     while (i < counter)
     {
         printData(&data.anchors[i]);
