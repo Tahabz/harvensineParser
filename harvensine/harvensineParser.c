@@ -292,8 +292,6 @@ Buffer allocate_buffer(unsigned long long size)
 
 int main(int argc, const char **argv)
 {
-    // u64 start = ReadOSTimer();
-    // u64 startUpStart = ReadCpuTimer();
     INIT_PROFILE;
     if (argc < 2)
     {
@@ -302,9 +300,7 @@ int main(int argc, const char **argv)
     }
 
     const char *file_name = argv[1];
-    // u64 startUpEnd = ReadCpuTimer();
 
-    // u64 memSetupStart = ReadCpuTimer();
     int fd = open(file_name, O_RDONLY);
     unsigned int size = file_size(file_name);
     Buffer buffer = allocate_buffer(size);
@@ -316,13 +312,8 @@ int main(int argc, const char **argv)
     unsigned long long max_pair_count = (buffer.length + 1) / min_pair_encoding;
     Buffer parsed_pairs = allocate_buffer(max_pair_count * sizeof(Pair));
     Pair *pairs = (Pair *)parsed_pairs.data;
-    // u64 memSetupEnd = ReadCpuTimer();
 
-    // u64 readStart = ReadCpuTimer();
     read(fd, buffer.data, buffer.length);
-    // u64 readEnd = ReadCpuTimer();
-
-    // u64 parseStart = ReadCpuTimer();
     {
         PROFILE_BLOCK("PARSING");
         while (l.i < size - 1)
@@ -330,9 +321,6 @@ int main(int argc, const char **argv)
             pairs[p.pair_length] = parse(&p);
         }
     }
-    // u64 parseEnd = ReadCpuTimer();
-
-    // u64 sumStart = ReadCpuTimer();
     unsigned int i = 0;
     int res = 0;
     {
@@ -350,34 +338,5 @@ int main(int argc, const char **argv)
     }
 
     END_PROFILE;
-    // u64 sumEnd = ReadCpuTimer();
-    // u64 printStart = ReadCpuTimer();
-    //     printf("Input Size: %lu\n", sizeof(pairs));
-    //     printf("Pair Count: %d\n", p.pair_length);
-    //     printf("Harvensine Average Sum: %f\n", (float)res / i);
-    // u64 printEnd = ReadCpuTimer();
-
-    // u64 end = ReadOSTimer();
-
-    // printf("\n------------------------------------------------\n");
-    // float totalTime = (end - start);
-    // u64 startup =  startUpEnd - startUpStart;
-    // u64 read = readEnd - readStart;
-    // u64 memorySetup = memSetupEnd - memSetupStart;
-    // u64 parse = parseEnd - parseStart;
-    // u64 sum = sumEnd - sumStart;
-    // u64 print = printEnd - printStart;
-
-    // u64 totalCpu = startup + read + memorySetup + parse + sum + print;
-    // u64 cpuFreq = GetCpuFreq();
-
-    // printf("Total time: %.3fs (CPU freq %llu)\n", totalTime/1000000, cpuFreq);
-    // printf("Start up: %llu (%.4f\%%)\n", startup, (float)startup * 100 / totalCpu);
-    // printf("Read: %llu (%.4f\%%)\n", read, (float)read * 100 / totalCpu);
-    // printf("Mem setup: %llu (%.4f\%%)\n", memorySetup, (float)memorySetup * 100 / totalCpu);
-    // printf("Parse: %llu (%.4f\%%)\n", parse, (float)parse * 100 / totalCpu);
-    // printf("Sum: %llu (%.4f\%%)\n", sum, (float)sum * 100 / totalCpu);
-    // printf("Print: %llu (%.4f\%%)\n", print, (float)print * 100 / totalCpu);
-
     return 0;
 }
