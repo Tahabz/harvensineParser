@@ -72,6 +72,7 @@ typedef struct
     u64 inclusive;
     u64 exclusive;
     unsigned char hit;
+    u64 bytesProcessed;
 } anchor;
 
 typedef struct
@@ -99,11 +100,19 @@ static int getPercentile(u64 max, u64 var)
 
 static void printData(anchor *anchor)
 {
+    float mb = (float)anchor->bytesProcessed / (1024*1024);
+    float gb = mb / 1024;
     printf("%s[%d] = %llu (%d%%)",
            anchor->label,
            anchor->hit,
            anchor->inclusive,
            getPercentile(data.elapsed, anchor->exclusive));
+    if (anchor->bytesProcessed) {
+        printf(" %.3fmb at %.3fgb/s",
+            mb,
+            gb * GetCpuFreq() / anchor->inclusive
+            );
+    }
     if (anchor->exclusive != anchor->inclusive)
     {
         printf("  w/children %d%%\n", getPercentile(data.elapsed, anchor->inclusive));
@@ -137,23 +146,23 @@ static void _end_profile(unsigned char counter)
 #define INIT_PROFILE init_profile()
 
 #ifdef PROFILER
-
-static void init_block(blockData *block, int anchorIndex, const char *label)
+static void init_block(blockData *block, int anchorIndex, const char *label, u64 bytes)
 {
     block->parentIndex = globalParentIndex;
     block->anchorIndex = anchorIndex;
     data.anchors[anchorIndex].label = label;
+    data.anchors[anchorIndex].bytesProcessed += bytes;
     block->start = ReadCpuTimer();
     block->oldTSCElapsed = data.anchors[anchorIndex].inclusive;
     globalParentIndex = anchorIndex;
 }
 
-#define PROFILE_FUNCTION PROFILE_BLOCK(__func__)
+#define PROFILE_FUNCTION_WB(bytes) PROFILE_BLOCK_WB(__func__, bytes)
 
-#define PROFILE_BLOCK(label) \
+#define PROFILE_BLOCK_WB(label, bytes) \
     int anchorIndex = __COUNTER__ + 1;   \
     blockData block; \
-    init_block(&block, anchorIndex, label);  \
+    init_block(&block, anchorIndex, label, bytes);  \
     __attribute__((cleanup(_block_cleanup))) blockData blockD = block;
 
 static void _block_cleanup(blockData *block)
@@ -167,7 +176,12 @@ static void _block_cleanup(blockData *block)
     anchor->inclusive = elapsed + block->oldTSCElapsed;
     anchor->hit += 1;
 }
+
+#define PROFILE_FUNCTION PROFILE_FUNCTION_WB(0)
+#define PROFILE_BLOCK(label) PROFILE_BLOCK_WB(label, 0)
 #else
     #define PROFILE_BLOCK(...)
+    #define PROFILE_BLOCK_WB(...)
     #define PROFILE_FUNCTION
+    #define PROFILE_FUNCTION_WB(...)
 #endif

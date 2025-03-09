@@ -1,4 +1,4 @@
-// #define PROFILER 0
+#define PROFILER 1
 
 #include "parser.h"
 #include "referenceHarvensince.c"
@@ -275,7 +275,7 @@ Pair parse(Parser *p)
 
 unsigned int file_size(const char *filename)
 {
-    PROFILE_FUNCTION
+    PROFILE_FUNCTION_WB(0)
     struct stat st;
     stat(filename, &st);
     return st.st_size;
@@ -283,7 +283,6 @@ unsigned int file_size(const char *filename)
 
 Buffer allocate_buffer(unsigned long long size)
 {
-    PROFILE_FUNCTION
     Buffer buffer = {};
     buffer.data = malloc(size);
     buffer.length = size;
@@ -313,9 +312,12 @@ int main(int argc, const char **argv)
     Buffer parsed_pairs = allocate_buffer(max_pair_count * sizeof(Pair));
     Pair *pairs = (Pair *)parsed_pairs.data;
 
-    read(fd, buffer.data, buffer.length);
     {
-        PROFILE_BLOCK("PARSING");
+        PROFILE_BLOCK_WB("READ", buffer.length)
+        read(fd, buffer.data, buffer.length);
+    }
+    {
+        PROFILE_BLOCK("PARSING")
         while (l.i < size - 1)
         {
             pairs[p.pair_length] = parse(&p);
@@ -324,7 +326,7 @@ int main(int argc, const char **argv)
     unsigned int i = 0;
     int res = 0;
     {
-        PROFILE_BLOCK("SUM");
+        PROFILE_BLOCK_WB("SUM", p.pair_length * sizeof(Pair));
         while (i < p.pair_length)
         {
             res += ReferenceHaversine(
@@ -336,7 +338,6 @@ int main(int argc, const char **argv)
             i += 1;
         }
     }
-
     END_PROFILE;
     return 0;
 }
